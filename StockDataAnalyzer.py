@@ -1,24 +1,30 @@
-## import regular expressions for format validation
+## import regular expressions for format validation, datetime not really needed
+## make sure to "pip install" pygal, lxml, and requests before running this on your local machine
+
+import pygal
+import lxml
 import re
 from datetime import datetime
-## imported requests, must do "pip install requests on local machine for this to work"
 import requests
 
 
 
 
-## Prompting the user for Stock Symbol and Checking for correct formatting
+
+## MAIN ###########################################################################################################################################
 
 def main():
    
     stock = GetStockName()
     chartType = GetChartType()
+    ## probably return time series as string in format 'TIME_SERIES_*' and input variable into url. Currently returning as integer
     timeSeries = GetTimeSeries()
     print("Enter StartDate (YYYY-MM-DD): ")
     startDate= GetDate()
     print("Enter End Date (YYYY-MM-DD): ")
     endDate = GetDate()
 
+    ## make this its own function
     if (timeSeries == 1):
         url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
     elif(timeSeries == 2):
@@ -28,14 +34,13 @@ def main():
     else:
         url = 'https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
 
-    # example code retrieving data from api
-    url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+    # example code printing data from api
     r = requests.get(url)
     data = r.json()
     print(data)
 
 
-
+## END MAIN ############################################################################################################################################
     
 
    
