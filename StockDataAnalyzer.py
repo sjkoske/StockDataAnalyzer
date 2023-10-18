@@ -1,8 +1,11 @@
 ## import regular expressions for format validation
 import re
 from datetime import datetime
-from alpha_vantage.timeseries import TimeSeries
-import matplotlib.pyplot as plt
+## imported requests, must do "pip install requests on local machine for this to work"
+import requests
+
+
+
 
 ## Prompting the user for Stock Symbol and Checking for correct formatting
 
@@ -15,6 +18,12 @@ def main():
     startDate= GetDate()
     print("Enter End Date (YYYY-MM-DD): ")
     endDate = GetDate()
+
+    # example code retrieving data from api
+    url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+    r = requests.get(url)
+    data = r.json()
+    print(data)
 
 
 
