@@ -19,6 +19,15 @@ def main():
     print("Enter End Date (YYYY-MM-DD): ")
     endDate = GetDate()
 
+    if (timeSeries == 1):
+        url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+    elif(timeSeries == 2):
+        url = 'https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+    elif(timeSeries == 3):
+        url = 'https://www.alphavantage.co/query?function=TIME_SERIES_WEEKLY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+    else:
+        url = 'https://www.alphavantage.co/query?function=TIME_SERIES_MONTHLY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
+
     # example code retrieving data from api
     url = 'https://www.alphavantage.co/query?function=TIME_SERIES_INTRADAY&symbol=',stock,'&interval=5min&apikey=67ZV81HC5LKYSLBY'
     r = requests.get(url)
