@@ -1,7 +1,10 @@
+# Run 'pip install pandas datetime alpha_vantage pygal scikit-learn'
 import pandas as pd
 from datetime import datetime
 from alpha_vantage.timeseries import TimeSeries
 import pygal
+from sklearn.preprocessing import MinMaxScaler
+
 
 # Dictionary to map integers to respective time series function names
 time_series_dict = {
@@ -16,31 +19,50 @@ time_series_dict = {
 def get_data(symbol, api_key, time_series):
     ts = TimeSeries(key=api_key, output_format='pandas')
     try:
-        # Fetch data based on the chosen time series
         if time_series == 1:
-            data, meta_data = ts.get_intraday(symbol=symbol, interval='60min', outputsize='full')
+            data, _ = ts.get_intraday(symbol=symbol, interval='60min', outputsize='full')
         elif time_series == 2:
-            data, meta_data = ts.get_daily(symbol=symbol, outputsize='full')
+            data, _ = ts.get_daily(symbol=symbol, outputsize='full')
         elif time_series == 3:
-            data, meta_data = ts.get_weekly(symbol=symbol)
+            data, _ = ts.get_weekly(symbol=symbol)
         elif time_series == 4:
-            data, meta_data = ts.get_monthly(symbol=symbol)
+            data, _ = ts.get_monthly(symbol=symbol)
     except ValueError as e:
         print(f"Error occurred: {e}")
         return None
-    # Handle case where no data is avilable for the symbol
+
     if data.empty:
         print(f"No data available for symbol {symbol}")
         return None
-    print('Data:', data)
-    print('Meta data:', meta_data)
+    # For debug
+    # print(data)
     return data
 
 # Function to filter based on provided date range
 def filter_by_date_range(data, start_date, end_date):
-    data = data.sort_index(ascending=True)
-    data.index = pd.to_datetime(data.index)
-    return data.loc[start_date:end_date]
+    # Convert the start and end dates to datetime objects without timezone localization
+    start_date = pd.to_datetime(start_date)
+    end_date = pd.to_datetime(end_date)
+
+    # Print the start and end dates (debug)
+    # print(f"Start date: {start_date}")
+    # print(f"End date: {end_date}")
+
+    # Sort the DataFrame's index in ascending order
+    data = data.sort_index()
+
+    # Print the first and last timestamps in the DataFrame's index (debug)
+    # print(f"First timestamp in data: {data.index[0]}")
+    # print(f"Last timestamp in data: {data.index[-1]}")
+
+    # Filter the data
+    filtered_data = data.loc[start_date:end_date]
+
+    # Print the filtered data (debug)
+    # print("Filtered data:")
+    # print(filtered_data)
+
+    return filtered_data
 
 # Generic function to validate user input
 def get_input(prompt, validation_func, error_message):
@@ -81,20 +103,36 @@ def validate_date_range(start_date, end_date):
     return end >= start
 
 # Function to plot the data
-def plot_data(df, chart_type="line"):
-    print(df.columns)
-    
+def plot_data(df, chart_type="line", normalize=False, time_series=None):
+    rename_dict = {'1. open': 'Open', '2. high': 'High', '3. low': 'Low', '4. close': 'Close'}
+    df.rename(columns=rename_dict, inplace=True)
+
+    if normalize:
+        scaler = MinMaxScaler()
+        df[['Open', 'High', 'Low', 'Close']] = scaler.fit_transform(df[['Open', 'High', 'Low', 'Close']])
+
     # Create a line or bar chart based on user input
     if chart_type == "line":
         chart = pygal.Line(x_label_rotation=20, x_value_formatter=lambda dt: dt.strftime('%d-%m-%Y %H:%M:%S'))
     elif chart_type == "bar":
-        chart = pygal.Bar()
+        chart = pygal.Bar(x_label_rotation=45)  # Rotate x-labels by 45 degrees
     else:
         print("Unsupported chart type")
         return
 
+    # Add title and labels
+    chart.title = 'Stock Data'
+    chart.x_title = 'Date'
+    chart.y_title = 'Value'
+
+    # Change the date format to include time if time_series is 1 (intraday)
+    if time_series == 1:
+        chart.x_labels = map(lambda d: d.strftime('%Y-%m-%d %H:%M:%S'), df.index)
+    else:
+        chart.x_labels = map(lambda d: d.strftime('%Y-%m-%d'), df.index)
+
     # Convert each column to numeric and drop non-numeric rows
-    for col in ['1. open', '2. high', '3. low', '4. close']:
+    for col in ['Open', 'High', 'Low', 'Close']:
         df[col] = pd.to_numeric(df[col], errors='coerce')
         df = df.dropna(subset=[col])
 
@@ -106,33 +144,66 @@ def plot_data(df, chart_type="line"):
 
 # Main function to get user input and plot data
 def main():
-    # Get user inputs
-    symbol = get_input("Enter the Stock Symbol you want to use (up to five letters):  ", validate_stock_name, "Input was not in the correct format, try again.\n")
-    chart_type = get_input("Choose the chart type: \n1. Bar\n2. Line\n", validate_chart_type, "Please enter either 1 or 2.\n")
-    
-    # Map the chart_type input to the corresponding string
-    chart_type_dict = {"1": "bar", "2": "line"}
-    chart_type = chart_type_dict[chart_type]
+    # Welcome message
+    print("Welcome to the Stock Data Analyzer!")
 
-    # Select the time series of the chart you wish to generate
-    time_series = get_input("Select the time series of the chart you wish to generate: \n1. Intraday\n2. Daily\n3. Weekly\n4. Monthly\n", validate_time_series, "Please enter 1, 2, 3, or 4.\n")
-
-    # Validate the start and end dates, ensuring the end date is after the start date
     while True:
-        start_date = get_input("Enter StartDate (YYYY-MM-DD): ", validate_date, "Enter your date in the correct format (YYYY-MM-DD).\n ")
-        end_date = get_input("Enter End Date (YYYY-MM-DD): ", validate_date, "Enter your date in the correct format (YYYY-MM-DD).\n ")
-        if validate_date_range(start_date, end_date):
-            break
-        else:
-            print("End date must be after start date. Please enter the dates again.\n")
+        # Prompt the user to enter the stock symbol
+        symbol = get_input("Please enter the stock symbol (1-5 alphabets): ", validate_stock_name, "Invalid stock symbol. It should be 1-5 alphabets.")
 
-    # Fetch data using the Alpha Vantage API
-    data = get_data(symbol, "67ZV81HC5LKYSLBY", int(time_series))
+        # Prompt the user to select the time series
+        time_series = int(get_input("Please select the time series (1: Intraday, 2: Daily, 3: Weekly, 4: Monthly): ", validate_time_series, "Invalid choice. Please enter a number between 1 and 4."))
 
-    # If data is not None, filter it by the date range and plot it
-    if data is not None:
+        # Fetch the data
+        print("\nFetching stock data...\n")
+        data = get_data(symbol, '67ZV81HC5LKYSLBY', time_series)
+
+        # If the user chose the intraday option, inform them about the valid date range
+        if time_series == 1:
+            print(f"Data fetched from {data.index.min().date()} to {data.index.max().date()}. Please select a date range within this period.")
+
+        # Prompt the user to enter the start and end dates
+        start_date = get_input("Please enter the start date (YYYY-MM-DD): ", validate_date, "Invalid date. Please enter a date in the format YYYY-MM-DD.")
+        end_date = get_input("Please enter the end date (YYYY-MM-DD): ", validate_date, "Invalid date. Please enter a date in the format YYYY-MM-DD.")
+        while not validate_date_range(start_date, end_date):
+            print("Invalid date range. The end date must be after the start date.")
+            start_date = get_input("Please enter the start date (YYYY-MM-DD): ", validate_date, "Invalid date. Please enter a date in the format YYYY-MM-DD.")
+            end_date = get_input("Please enter the end date (YYYY-MM-DD): ", validate_date, "Invalid date. Please enter a date in the format YYYY-MM-DD.")
+
+        # Check if data is None
+        if data is None:
+            print("Failed to fetch data. Please check your inputs and try again.")
+            return
+
+        # Filter the data
+        print("\nFiltering data...\n")
         filtered_data = filter_by_date_range(data, start_date, end_date)
-        plot_data(filtered_data, chart_type)
+
+        # Check if filtered data is empty
+        if filtered_data.empty:
+            print("No data available for the selected date range. Please try a different date range.")
+            continue
+
+        # Prompt the user to select the chart type
+        chart_type = get_input("Please select the chart type (1: line, 2: bar): ", validate_chart_type, "Invalid choice. Please enter 1 for line or 2 for bar.")
+        chart_type = "line" if chart_type == "1" else "bar"
+
+        # Prompt the user to choose whether to normalize the data (for bar charts only)
+        normalize = False
+        if chart_type == "bar":
+            normalize_str = input("Do you want to normalize the data to better visualize changes? (yes/no): ")
+            normalize = normalize_str.lower() == "yes"
+
+        # Plot the data
+        print("\nPlotting data...\n")
+        plot_data(filtered_data, chart_type, normalize, time_series)
+
+        print("Done!")
+
+        # Ask the user if they want to create another graph
+        another_graph = input("Do you want to create another graph? (yes/no): ")
+        if another_graph.lower() != "yes":
+            break  # Exit the loop if the user doesn't want to create another graph
 
 # Checks if script is run directly and calls the main function
 if __name__ == "__main__":
