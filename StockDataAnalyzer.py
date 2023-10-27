@@ -102,6 +102,9 @@ def validate_date_range(start_date, end_date):
     end = datetime.strptime(end_date, '%Y-%m-%d')
     return end >= start
 
+def validate_yes_no(response):
+    return response.lower() in ['yes', 'no', 'y', 'n']
+
 # Function to plot the data
 def plot_data(df, chart_type="line", normalize=False, time_series=None):
     rename_dict = {'1. open': 'Open', '2. high': 'High', '3. low': 'Low', '4. close': 'Close'}
@@ -191,8 +194,8 @@ def main():
         # Prompt the user to choose whether to normalize the data (for bar charts only)
         normalize = False
         if chart_type == "bar":
-            normalize_str = input("Do you want to normalize the data to better visualize changes? (yes/no): ")
-            normalize = normalize_str.lower() == "yes"
+            normalize_str = get_input("Do you want to normalize the data to better visualize changes? (yes/no): ", validate_yes_no, "Invalid input. Please enter yes/no.")
+            normalize = normalize_str.lower() in ["yes", "y"]
 
         # Plot the data
         print("\nPlotting data...\n")
@@ -201,9 +204,14 @@ def main():
         print("Done!")
 
         # Ask the user if they want to create another graph
-        another_graph = input("Do you want to create another graph? (yes/no): ")
-        if another_graph.lower() != "yes":
-            break  # Exit the loop if the user doesn't want to create another graph
+        while True:
+            another_graph_str = get_input("Do you want to create another graph? (yes/no): ", validate_yes_no, "Invalid input. Please enter yes/no.")
+            another_graph = another_graph_str.lower()
+            if another_graph in ["yes", "y"]:
+                break
+            elif another_graph in ["no", "n"]:
+                return
+
 
 # Checks if script is run directly and calls the main function
 if __name__ == "__main__":
